@@ -1,2 +1,5 @@
-Have a command identify the speciifed command from the input.
-Have it call the appropriate function to execute the command.
+Finishing implenting functionality
+- select
+- insert
+- update
+- delete
