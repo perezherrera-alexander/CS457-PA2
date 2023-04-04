@@ -1,5 +1,5 @@
 # Author: Alexander Perez-Herrera
-# Date: 03/31/23
+# Date: 04/3/23
 # Name: driver.py
 # Purpose: Simulate an enviroment like the sqlite3 command line interface. This iteration of the program far further functionality than the previous iteration.
 import sys
@@ -9,15 +9,15 @@ import re
 workingPath = os.getcwd()
 useCheck = False
 
-# Return 0 if successful, 1 if not
-
+# The main fucntion is responsible for user input, whether it be from the command line or from a script file
 def main():
     if len(sys.argv) == 1:
         print("Running in interactive mode")
     elif len(sys.argv) == 2:
         print("Running in script mode")
         if(os.path.isfile(sys.argv[1])):
-            print("Script file exists")
+            #print("Script file exists")
+            pass
         else:
             print("Script file does not exist")
             return 1
@@ -39,7 +39,25 @@ def main():
             
             #print(inputTokens)
             recognizeInput(inputTokens)
+    elif len(sys.argv) == 2:
+        inputFile = open(sys.argv[1], 'r')
+        for line in inputFile:
+            inputTokens = line.split()
+            # remove any lines that are empty or start with a comment
+            if len(inputTokens) == 0 or inputTokens[0][0] == "-":
+                continue
+            if inputTokens[0][0] == ".": # if the first token starts with a period, it's probably the .EXIT command
+                inputTokens[0] = inputTokens[0].lower()
+            elif inputTokens[-1][-1] != ";": # If the last token doesn't in a semicolon, continue getting input
+                while inputTokens[-1][-1] != ";": # While the last token doesn't end in a semicolon, continue append the next line to the list
+                    inputString = inputFile.readline()
+                    inputTokens.extend(inputString.split())
+                inputTokens[-1] = inputTokens[-1][:-1] # remove the semicolon from the last token
+            else: # If the string initially ends in a semicolon, remove it
+                inputTokens[-1] = inputTokens[-1][:-1]
+            recognizeInput(inputTokens)
 
+# This function is responsible for recognizing the command that the user inputted and calling the appropriate function
 def recognizeInput(inputTokens):
     command = inputTokens[0]
     if command == ".exit":
@@ -79,7 +97,7 @@ def recognizeInput(inputTokens):
         print("Errror: Invalid command. Please try again.\n")
     return 0
 
-
+# This function is responsible for CREATE commands and will create a database or table as specified
 def createCommand(inputTokens):
     if inputTokens[1] == "DATABASE":
         initializeDatabase(inputTokens)
@@ -90,6 +108,7 @@ def createCommand(inputTokens):
         return 1
     return 0
 
+# A helper function for createCommand that creates a database (folder)
 def initializeDatabase(inputTokens):
     global workingPath
     if(os.path.isdir(workingPath + "/" + inputTokens[2])):
@@ -99,6 +118,7 @@ def initializeDatabase(inputTokens):
     print("Database {0} created.".format(inputTokens[2]))
     return 0
 
+# A helper function for createCommand that creates a table (file)
 def initializeTable(inputTokens):
     global workingPath
     global useCheck
@@ -138,12 +158,14 @@ def initializeTable(inputTokens):
     tableFile.close()
     return 0
 
+# This function is responsible for DROP commands and will drop a database or table as specified
 def dropCommand(inputTokens):
     print("Functionality not yet implemented.")
     #if inputTokens[1] == "DATABASE":
         #os.rmdir(workingPath + "/" + inputTokens[2])
     return 1
 
+# This function is responsible for USE commands and will select a database to use
 def useCommand(inputTokens):
     global workingPath
     global useCheck
@@ -158,9 +180,10 @@ def useCommand(inputTokens):
         return 1
     return 0
 
+# This function is responsible for SELECT commands and will print the specified query from the specified table
 def selectCommand(inputTokens):
     #print("Select command")
-    selectParam = []
+    selectParam = [] # List of parameters to be printed
     fromIndex = 0
     for i in range(0, len(inputTokens)):
         if(inputTokens[i] == "from"):
@@ -173,14 +196,141 @@ def selectCommand(inputTokens):
     if(selectParam[0] == "*"): # print all columns
         if(os.path.isfile(workingPath + "/" + tableName)):
             tableFile = open(workingPath + "/" + tableName, 'r')
-            print(tableFile.read())
+            tableLines = tableFile.read()
+            tableFile.close()
+            #print(tableFile.read())
     else: # print specific columns
-        print("Functionality not yet implemented.")
+        # selectParam at this point contains the type of columns to be printed
+        if(os.path.isfile(workingPath + "/" + tableName)):
+            tableFile = open(workingPath + "/" + tableName, 'r')
+            tableLines = tableFile.readlines()
+            tableFile.close()
+
+        whereIndex = -1
+        if "WHERE" in inputTokens:
+            whereIndex = inputTokens.index("WHERE")
+        if "where" in inputTokens:
+            whereIndex = inputTokens.index("where")
+        if whereIndex != -1:
+            attributeToSearch = inputTokens[whereIndex + 1]
+            attributeCondition = inputTokens[whereIndex + 2]
+            attributeValue = inputTokens[whereIndex + 3]
+
+        #remove commas if they exist
+        for i in range(0, len(selectParam)):
+            if(selectParam[i][-1] == ","):
+                selectParam[i] = selectParam[i][:-1]
+        
+
+        columnsToPrint = []
+        columnOfattributeToSearch = -1
+        for i in range(0, len(selectParam)):
+            #print("Searching for: ", selectParam[i], " in table")
+            numberOfPipes = 0
+            foundIndex = tableLines[0].find(selectParam[i])
+            #print("foundIndex: ", foundIndex)
+            if foundIndex != -1:
+                numberOfPipes = tableLines[0][:foundIndex].count("|")
+                #print("sub string to search", tableLines[0][:foundIndex])
+                #print("numberOfPipes: ", numberOfPipes)
+                columnsToPrint.append(numberOfPipes + 1)
+            #print("columnsToPrint: ", columnsToPrint)
+        tempAttriuteSearchIndex = tableLines[0].find(attributeToSearch)
+        if tempAttriuteSearchIndex != -1:
+            columnOfattributeToSearch = tableLines[:tempAttriuteSearchIndex].count("|") + 1
+        deletionOffset = 0
+        #print("columnOfattributeToSearch: ", columnOfattributeToSearch)
+        for i in range(1, len(tableLines)):
+            startSearchIndex = -1
+            endSearchIndex = -1
+            #print("i: ", i)
+            #print("deletionOffset: ", deletionOffset)
+            temp = tableLines[i - deletionOffset]
+            #print("length of tableLines: ", len(tableLines))
+            for j in range(0, columnOfattributeToSearch):
+                if(columnOfattributeToSearch == 1):
+                    startSearchIndex = 0
+                else:
+                    startSearchIndex = temp.find("|", startSearchIndex) + 1
+                endSearchIndex = temp.find(" ", startSearchIndex)
+                #print("startSearchIndex: ", startSearchIndex)
+                #print("endSearchIndex: ", endSearchIndex)
+                
+                if(attributeCondition == "!="):
+                    if(tableLines[i - deletionOffset][startSearchIndex:endSearchIndex] != attributeValue):
+                        # This works as intended but I have a suspicous it was implemented incorrectly and may not work in all cases
+                        #print("Found a match")
+                        startSearchIndex -= 2
+                        if(startSearchIndex < 0):
+                            startSearchIndex = 0
+                        endSearchIndex += 2
+
+                        subStringToReplace = tableLines[i - deletionOffset][startSearchIndex:endSearchIndex]
+                        #remove leading whitespace
+                        if(subStringToReplace[0] == " "):
+                            subStringToReplace = subStringToReplace[1:]
+
+                        #print("Substring to replace:", subStringToReplace)
+                        tableLines[i - deletionOffset] = tableLines[i - deletionOffset].replace(subStringToReplace, "")
+                    else:
+                        #print("No match found, removing line")
+                        tableLines.pop(i - deletionOffset)
+                        deletionOffset += 1
+                        #print("deletionOffset: ", deletionOffset)
+                else:
+                    print("Functionality not yet implemented.")
+            
+        # remove the appropriate columns from the first line
+        newFirstLine = ""
+        #print("length of selectParam: ", len(selectParam))
+        #print("origonal first line: ", tableLines[0])
+        for i in range(0, len(selectParam)):
+            startSearchIndex = -1
+            endSearchIndex = -1
+            startSearchIndex = tableLines[0].find(selectParam[i])
+            startSearchIndex -= 1
+            endSearchIndex = tableLines[0].find("|", startSearchIndex)
+            newFirstLine += tableLines[0][startSearchIndex:endSearchIndex]
+            newFirstLine += "|" # add the pipe back in
+        # remove the last pipe
+        newFirstLine = newFirstLine[:-1]
+
+        newFirstLine += "\n"
+        tableLines[0] = newFirstLine
+        # remove any leading whitespace
+        for i in range(0, len(tableLines)):
+            if(tableLines[i][0] == " "):
+                tableLines[i] = tableLines[i][1:]
+        # Remove all whitespace
+        for i in range(1, len(tableLines)):
+            tableLines[i] = tableLines[i].replace(" ", "")
+
+            # At this point tableLines[i] contains only the data we want to print
+    #print("Rpitning something imporatn her:")
+    #print(tableLines)
+    # if there's an empty line or a line that is just whitespace, remove it
+    #for i in range(0, len(tableLines)):
+    if not tableLines[-1]:
+        #print("String was empty")
+        tableLines.pop(-1)
+    #print("Done printing something important here")
+    
+            
+    # Print the table in tableLines
+    for i in range(0, len(tableLines)):
+        if(i == len(tableLines) - 1):
+            # if the last character is a newline, remove it
+            tableLines[i].strip()
+            print(tableLines[i])
+        else:
+            print(tableLines[i], end = "")
+    #print()
 
         
 
     return 0
 
+# This function is used to insert a record into a table
 def insertCommand(inputTokens):
     global workingPath
     global useCheck
@@ -228,12 +378,13 @@ def insertCommand(inputTokens):
         for i in range(0, len(record)):
             tableFile.write(record[i])
         tableFile.close()
+        print("1 new record inserted.")
     else:
         print("Table {0} does not exist.".format(inputTokens[2]))
         return 1
     return 0
 
-
+# This function is used to update a record in a table based on a condition
 def updateCommand(inputTokens):
     global workingPath
     global useCheck
@@ -341,6 +492,7 @@ def updateCommand(inputTokens):
         return 1
     return 0
 
+# This function is used to delete a record in a table based on a condition
 def deleteCommand(inputTokens):
     global workingPath
     global useCheck
@@ -410,19 +562,16 @@ def deleteCommand(inputTokens):
             elif(parameterCondition == "<"):
                 print("Functionality not yet implemented.")
 
-            if(recordsRemoved == 1):
-                print("{0} record deleted.".format(recordsRemoved))
-            else:
-                print("{0} records deleted.".format(recordsRemoved))
+            
 
             # write the modified table to the file
             tableFile = open(workingPath + "/" + tableName, 'w')
             tableFile.writelines(tableLines)
             tableFile.close()
-
-            
-
-
+        if(recordsRemoved == 1):
+            print("{0} record deleted.".format(recordsRemoved))
+        else:
+            print("{0} records deleted.".format(recordsRemoved))
 
 if __name__ == "__main__":
     main()
