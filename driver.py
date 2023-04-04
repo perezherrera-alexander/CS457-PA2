@@ -37,7 +37,7 @@ def main():
             else: # If the string initially ends in a semicolon, remove it
                 inputTokens[-1] = inputTokens[-1][:-1]
             
-            print(inputTokens)
+            #print(inputTokens)
             recognizeInput(inputTokens)
 
 def recognizeInput(inputTokens):
@@ -261,10 +261,10 @@ def updateCommand(inputTokens):
 
     #Print all of these variables to the console with labels
     #print("Table name: {0}".format(tableName))
-    print("Parameter to change: {0}".format(paramToChange))
-    print("Parameter to change condition: {0}".format(paramToChangeCondition))
-    print("Search parameter: {0}".format(searchParam))
-    print("Search parameter condition: {0}".format(searchParamCondition))
+    #print("Parameter to change: {0}".format(paramToChange))
+    #print("Parameter to change condition: {0}".format(paramToChangeCondition))
+    #print("Search parameter: {0}".format(searchParam))
+    #print("Search parameter condition: {0}".format(searchParamCondition))
 
     modifiedCount = 0
 
@@ -279,40 +279,40 @@ def updateCommand(inputTokens):
         if(wOccurence != -1):
             wCounter = tableLines[0].count("|", 0, wOccurence)
             wCounter += 1
-        print("Where clause found in column {0}.".format(wCounter))
+        #print("Where clause found in column {0}.".format(wCounter))
         setOccurence = tableLines[0].find(paramToChange)
         if(setOccurence != -1):
             setCounter = tableLines[0].count("|", 0, setOccurence)
             setCounter += 1
-        print("Set clause found in column {0}.".format(setCounter))
+        #print("Set clause found in column {0}.".format(setCounter))
 
         #testString = "test1 | test2 | test3"
         #tester = testString.find("|")
         #print(testString)
         #print(tester)
 
-        print("TESTING")
-        print("searchParamCondition: {0}".format(searchParamCondition))
-        print(tableLines[5])
+        #print("TESTING")
+        #print("searchParamCondition: {0}".format(searchParamCondition))
+        #print(tableLines[5])
         booler = tableLines[5].find((searchParamCondition + " "))
-        print(booler)
+        #print(booler)
 
         for i in range(1, len(tableLines)):
             #locate the search parameter in the line
             if(tableLines[i].find((" " + searchParamCondition)) != -1):
-                print("Found {0} in line {1}.".format((" " + searchParamCondition), i))
+                #print("Found {0} in line {1}.".format((" " + searchParamCondition), i))
                 temp = tableLines[i]
                 whereToStartSearching = 0
                 for j in range(1, setCounter):
-                    print("setCounter: {0}".format(setCounter))
-                    print("temp: {0}".format(temp))
+                    #print("setCounter: {0}".format(setCounter))
+                    #print("temp: {0}".format(temp))
                     whereToStartSearching += temp.find("|") + 1
-                    print("temp index: {0}".format(whereToStartSearching))
+                    #print("temp index: {0}".format(whereToStartSearching))
                     temp = temp[whereToStartSearching:]
                 whereToStartSearching += 1
                 endOfEntry = tableLines[i].find(" ", whereToStartSearching)
-                print("whereToStartSearching: {0}".format(whereToStartSearching))
-                print("endOfEntry: {0}".format(endOfEntry))
+                #print("whereToStartSearching: {0}".format(whereToStartSearching))
+                #print("endOfEntry: {0}".format(endOfEntry))
                 tableLines[i] = tableLines[i].replace(tableLines[i][whereToStartSearching:endOfEntry], paramToChangeCondition)
                 modifiedCount += 1
                 
@@ -348,52 +348,81 @@ def deleteCommand(inputTokens):
     if(useCheck == False):
         print("Error: No database in use. Please try again.")
         return 1
-    tableName = inputTokens[1]
-    searchParam = inputTokens[3] #name (where clause)
-    searchParamCondition = inputTokens[5] #'SuperGizmo' (where clause)
+    tableName = inputTokens[2]
+    paramater = inputTokens[4] # What attribute to search through
+    parameterCondition = inputTokens[5] # what condition to use on recordToRemove
+    recordToRemove = inputTokens[6] # What value to remove
 
-    # remove the quotation marks from the condition
-    if(searchParamCondition[0] == "'"):
-        searchParamCondition = searchParamCondition[1:]
-    if(searchParamCondition[-1] == "'"):
-        searchParamCondition = searchParamCondition[:-1]
+    #print("tableName: {0}".format(tableName))
+    #print("paramater: {0}".format(paramater))
+    #print("parameterCondition: {0}".format(parameterCondition))
+    #print("recordToRemove: {0}".format(recordToRemove))
 
-    #Print all of these variables to the console with labels
-    #print("Table name: {0}".format(tableName))
-    print("Search parameter: {0}".format(searchParam))
-    print("Search parameter condition: {0}".format(searchParamCondition))
+    # remove the quotation marks from recordToRemove
+    if(recordToRemove[0] == "'"):
+        recordToRemove = recordToRemove[1:]
+    if(recordToRemove[-1] == "'"):
+        recordToRemove = recordToRemove[:-1]
 
-    modifiedCount = 0
-
-    if(os.path.isfile(workingPath + "/" + inputTokens[1])):
-        tableFile = open(workingPath + "/" + inputTokens[1], 'r')
+    if(os.path.isfile(workingPath + "/" + tableName)):
+        tableFile = open(workingPath + "/" + tableName, 'r')
         tableLines = tableFile.readlines()
         tableFile.close()
+        
+        paramaterOccurence = tableLines[0].find(paramater)
+        # Find the number of pipes before the paramater
+        if(paramaterOccurence != -1):
+            paramaterCounter = tableLines[0].count("|", 0, paramaterOccurence)
+            paramaterCounter += 1
+        #print("Paramater found in column {0}.".format(paramaterCounter))
 
-        #attribueID = 0
-
-        wOccurence = tableLines[0].find(searchParam)
-        if(wOccurence != -1):
-            wCounter = tableLines[0].count("|", 0, wOccurence)
-            wCounter += 1
-        print("Where clause found in column {0}.".format(wCounter))
+        iOffset = 0 # Used to offset the index of the line being searched as lines are removed
+        recordsRemoved = 0
 
         for i in range(1, len(tableLines)):
-            #locate the search parameter in the line
-            if(tableLines[i].find((" " + searchParamCondition)) != -1):
-                print("Found {0} in line {1}.".format((" " + searchParamCondition), i))
-                tableLines[i] = ""
-                modifiedCount += 1
+            #Find the starting index of the paramter in the column specified by paramaterCounter
+            newI = i - iOffset
+            #print("Value of i: {0}".format(i))
+            temp = tableLines[newI]
+            whereToStartSearching = 0
+            for j in range(1, paramaterCounter):
+                whereToStartSearching += temp.find("|") + 1
+                temp = temp[whereToStartSearching:]
+            whereToStartSearching += 1
+            endOfEntry = tableLines[newI].find(" ", whereToStartSearching)
+            #print("whereToStartSearching: {0}".format(whereToStartSearching))
+            #print("endOfEntry: {0}".format(endOfEntry))
+            if(parameterCondition == "="):
+                if(tableLines[newI][whereToStartSearching:endOfEntry] == recordToRemove):
+                    #print("Found {0} in line {1}.".format(recordToRemove, newI))
+                    tableLines.pop(newI)
+                    iOffset += 1
+                    recordsRemoved += 1
+            elif(parameterCondition == ">"):
+                tempSubstring = tableLines[newI][whereToStartSearching:endOfEntry]
+                tempSubstringFloat = float(tempSubstring)
+                recordToRemoveFloat = float(recordToRemove)
+                if(tempSubstringFloat > recordToRemoveFloat):
+                    #print("Found {0} in line {1}.".format(recordToRemove, newI))
+                    tableLines.pop(newI)
+                    iOffset += 1
+                    recordsRemoved += 1
+            elif(parameterCondition == "<"):
+                print("Functionality not yet implemented.")
 
-        tableFile = open(workingPath + "/" + inputTokens[1], 'w')
-        tableFile.writelines(tableLines)
-        tableFile.close()
-        if(modifiedCount == 1):
-            print("{0} record deleted.".format(modifiedCount))
-        else:
-            print("{0} records deleted.".format(modifiedCount))
-        #print("Modified {0} records.".format(modifiedCount))
-        # print tableLines to the
+            if(recordsRemoved == 1):
+                print("{0} record deleted.".format(recordsRemoved))
+            else:
+                print("{0} records deleted.".format(recordsRemoved))
+
+            # write the modified table to the file
+            tableFile = open(workingPath + "/" + tableName, 'w')
+            tableFile.writelines(tableLines)
+            tableFile.close()
+
+            
+
+
 
 if __name__ == "__main__":
     main()
