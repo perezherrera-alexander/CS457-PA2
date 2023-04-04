@@ -58,7 +58,8 @@ def recognizeInput(inputTokens):
             print("Error: Invalid syntax. Please try again.")
             return 1
     elif command == "SELECT" or command == "select":
-        selectCommand(inputTokens)
+        if(len(inputTokens) >= 4):
+            selectCommand(inputTokens)
     elif command == "USE" or command == "use":
         if(len(inputTokens) == 2):
             #print("Use command")
@@ -154,6 +155,25 @@ def useCommand(inputTokens):
 
 def selectCommand(inputTokens):
     #print("Select command")
+    selectParam = []
+    fromIndex = 0
+    for i in range(0, len(inputTokens)):
+        if(inputTokens[i] == "from"):
+            fromIndex = i
+            for j in range(1, i):
+                selectParam.append(inputTokens[j])
+    tableName = inputTokens[fromIndex + 1]
+    #print(selectParam)
+    #print(fromIndex)
+    if(selectParam[0] == "*"): # print all columns
+        if(os.path.isfile(workingPath + "/" + tableName)):
+            tableFile = open(workingPath + "/" + tableName, 'r')
+            print(tableFile.read())
+    else: # print specific columns
+        print("Functionality not yet implemented.")
+
+        
+
     return 0
 
 def insertCommand(inputTokens):
@@ -170,34 +190,34 @@ def insertCommand(inputTokens):
         record = []
         for i in range(3, len(inputTokens)):
             record.append(inputTokens[i])
-        print(record)
+        #print(record)
         #remove the word "values" from the first element
         record[0] = record[0][6:]
-        print(record)
+        #print(record)
         #remove the parentheses from the first and last elements
         record[0] = record[0][1:]
         record[-1] = record[-1][:-1]
-        print(record)
+        #print(record)
         #remove commas from all elements
         for i in range(0, len(record)):
             if(record[i][-1] == ","):
                 record[i] = record[i][:-1]
-        print(record)
+        #print(record)
         # remove the quotation marks from all elements
         for i in range(0, len(record)):
             if(record[i][0] == "'"):
                 record[i] = record[i][1:]
             if(record[i][-1] == "'"):
                 record[i] = record[i][:-1]
-        print(record)
+        #print(record)
         #add spaces between the elements
         for i in range(0, len(record)):
             record[i] = record[i] + " "
-        print(record)
+        #print(record)
         #add | symbols between all elements except the last
         for i in range(0, len(record) - 1):
             record[i] = record[i] + "|" + " "
-        print(record)
+        #print(record)
 
         #Write the record to the table
         for i in range(0, len(record)):
