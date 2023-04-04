@@ -4,6 +4,7 @@
 # Purpose: Simulate an enviroment like the sqlite3 command line interface. This iteration of the program far further functionality than the previous iteration.
 import sys
 import os.path
+import re
 
 workingPath = os.getcwd()
 useCheck = False
@@ -70,6 +71,10 @@ def recognizeInput(inputTokens):
     elif command == "INSERT" or command == "insert":
         if(len(inputTokens) >= 4):
             insertCommand(inputTokens)
+    elif command == "UPDATE" or command == "update":
+        updateCommand(inputTokens)
+    elif command == "DELETE" or command == "delete":
+        deleteCommand(inputTokens)
     else:
         print("Errror: Invalid command. Please try again.\n")
     return 0
@@ -223,7 +228,172 @@ def insertCommand(inputTokens):
         for i in range(0, len(record)):
             tableFile.write(record[i])
         tableFile.close()
+    else:
+        print("Table {0} does not exist.".format(inputTokens[2]))
+        return 1
     return 0
+
+
+def updateCommand(inputTokens):
+    global workingPath
+    global useCheck
+    tablePath = workingPath + "/" + inputTokens[1]
+    if(useCheck == False):
+        print("Error: No database in use. Please try again.")
+        return 1
+    tableName = inputTokens[1]
+    paramToChange = inputTokens[3] #name, price (set clause)
+    paramToChangeCondition = inputTokens[5] #'Gizmo' (set clause)
+    searchParam = inputTokens[7] #name (where clause)
+    searchParamCondition = inputTokens[9] #'SuperGizmo' (where clause)
+
+
+    # remove the quotation marks from the condition
+    if(paramToChangeCondition[0] == "'"):
+        paramToChangeCondition = paramToChangeCondition[1:]
+    if(paramToChangeCondition[-1] == "'"):
+        paramToChangeCondition = paramToChangeCondition[:-1]
+    # remove the quotation marks from the condition
+    if(searchParamCondition[0] == "'"):
+        searchParamCondition = searchParamCondition[1:]
+    if(searchParamCondition[-1] == "'"):
+        searchParamCondition = searchParamCondition[:-1]
+
+    #Print all of these variables to the console with labels
+    #print("Table name: {0}".format(tableName))
+    print("Parameter to change: {0}".format(paramToChange))
+    print("Parameter to change condition: {0}".format(paramToChangeCondition))
+    print("Search parameter: {0}".format(searchParam))
+    print("Search parameter condition: {0}".format(searchParamCondition))
+
+    modifiedCount = 0
+
+    if(os.path.isfile(workingPath + "/" + inputTokens[1])):
+        tableFile = open(workingPath + "/" + inputTokens[1], 'r')
+        tableLines = tableFile.readlines()
+        tableFile.close()
+
+        #attribueID = 0
+
+        wOccurence = tableLines[0].find(searchParam)
+        if(wOccurence != -1):
+            wCounter = tableLines[0].count("|", 0, wOccurence)
+            wCounter += 1
+        print("Where clause found in column {0}.".format(wCounter))
+        setOccurence = tableLines[0].find(paramToChange)
+        if(setOccurence != -1):
+            setCounter = tableLines[0].count("|", 0, setOccurence)
+            setCounter += 1
+        print("Set clause found in column {0}.".format(setCounter))
+
+        #testString = "test1 | test2 | test3"
+        #tester = testString.find("|")
+        #print(testString)
+        #print(tester)
+
+        print("TESTING")
+        print("searchParamCondition: {0}".format(searchParamCondition))
+        print(tableLines[5])
+        booler = tableLines[5].find((searchParamCondition + " "))
+        print(booler)
+
+        for i in range(1, len(tableLines)):
+            #locate the search parameter in the line
+            if(tableLines[i].find((" " + searchParamCondition)) != -1):
+                print("Found {0} in line {1}.".format((" " + searchParamCondition), i))
+                temp = tableLines[i]
+                whereToStartSearching = 0
+                for j in range(1, setCounter):
+                    print("setCounter: {0}".format(setCounter))
+                    print("temp: {0}".format(temp))
+                    whereToStartSearching += temp.find("|") + 1
+                    print("temp index: {0}".format(whereToStartSearching))
+                    temp = temp[whereToStartSearching:]
+                whereToStartSearching += 1
+                endOfEntry = tableLines[i].find(" ", whereToStartSearching)
+                print("whereToStartSearching: {0}".format(whereToStartSearching))
+                print("endOfEntry: {0}".format(endOfEntry))
+                tableLines[i] = tableLines[i].replace(tableLines[i][whereToStartSearching:endOfEntry], paramToChangeCondition)
+                modifiedCount += 1
+                
+
+        tableFile = open(workingPath + "/" + inputTokens[1], 'w')
+        tableFile.writelines(tableLines)
+        tableFile.close()
+        if(modifiedCount == 1):
+            print("{0} record modified.".format(modifiedCount))
+        else:
+            print("{0} records modified.".format(modifiedCount))
+        #print("Modified {0} records.".format(modifiedCount))
+        # print tableLines to the console one line at a time
+        #for i in range(0, len(tableLines)):
+            #print(tableLines[i])
+        #print(tableLines)
+
+        #tableFile = open(workingPath + "/" + inputTokens[1], 'w')
+        #for i in range(0, len(tableLines)):
+        #    if(tableLines[i].find(searchParam) != -1):
+        #        tableLines[i] = tableLines[i].replace(searchParam, paramToChange)
+        #tableFile.writelines(tableLines)
+        #tableFile.close()
+    else:
+        print("Table {0} does not exist.".format(tableName))
+        return 1
+    return 0
+
+def deleteCommand(inputTokens):
+    global workingPath
+    global useCheck
+    tablePath = workingPath + "/" + inputTokens[1]
+    if(useCheck == False):
+        print("Error: No database in use. Please try again.")
+        return 1
+    tableName = inputTokens[1]
+    searchParam = inputTokens[3] #name (where clause)
+    searchParamCondition = inputTokens[5] #'SuperGizmo' (where clause)
+
+    # remove the quotation marks from the condition
+    if(searchParamCondition[0] == "'"):
+        searchParamCondition = searchParamCondition[1:]
+    if(searchParamCondition[-1] == "'"):
+        searchParamCondition = searchParamCondition[:-1]
+
+    #Print all of these variables to the console with labels
+    #print("Table name: {0}".format(tableName))
+    print("Search parameter: {0}".format(searchParam))
+    print("Search parameter condition: {0}".format(searchParamCondition))
+
+    modifiedCount = 0
+
+    if(os.path.isfile(workingPath + "/" + inputTokens[1])):
+        tableFile = open(workingPath + "/" + inputTokens[1], 'r')
+        tableLines = tableFile.readlines()
+        tableFile.close()
+
+        #attribueID = 0
+
+        wOccurence = tableLines[0].find(searchParam)
+        if(wOccurence != -1):
+            wCounter = tableLines[0].count("|", 0, wOccurence)
+            wCounter += 1
+        print("Where clause found in column {0}.".format(wCounter))
+
+        for i in range(1, len(tableLines)):
+            #locate the search parameter in the line
+            if(tableLines[i].find((" " + searchParamCondition)) != -1):
+                print("Found {0} in line {1}.".format((" " + searchParamCondition), i))
+                tableLines[i] = ""
+                modifiedCount += 1
+
+        tableFile = open(workingPath + "/" + inputTokens[1], 'w')
+        tableFile.writelines(tableLines)
+        tableFile.close()
+        if(modifiedCount == 1):
+            print("{0} record deleted.".format(modifiedCount))
+        else:
+            print("{0} records deleted.".format(modifiedCount))
+        #print("Modified {0} records.".format(modifiedCount))
+        # print tableLines to the
 
 if __name__ == "__main__":
     main()
